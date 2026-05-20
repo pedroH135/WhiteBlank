@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Projeto - WhiteBlank</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='projeto.css') }}">
+
+</head>
+
+<body>
+
+    <!-- TOPO -->
+
+    <header class="topbar">
+
+        <div class="logo-area">
+
+            <h1>WhiteBlank</h1>
+
+        </div>
+
+        <div class="project-info">
+
+            <h2>Projeto Álgebra Linear</h2>
+
+            <p>Salvamento automático ativo</p>
+
+        </div>
+
+    </header>
+
+    <!-- CONTEÚDO -->
+
+    <main class="workspace">
+
+        <!-- PAINEL DE SLIDES -->
+
+        <aside class="slides-panel">
+
+            <button class="new-slide-btn">
+                + Novo Slide
+            </button>
+
+            <div class="slide-card active">
+                Slide 1
+            </div>
+
+            <div class="slide-card">
+                Slide 2
+            </div>
+
+            <div class="slide-card">
+                Slide 3
+            </div>
+
+        </aside>
+
+        <!-- ÁREA CENTRAL -->
+
+        <section class="editor-container">
+
+            <!-- BARRA DE FERRAMENTAS -->
+
+            <div class="toolbar">
+
+                <button>Texto</button>
+
+                <button>Imagem</button>
+
+                <button>Duplicar</button>
+
+                <button>Excluir</button>
+
+                <button>Template</button>
+
+                <button>Apresentar</button>
+
+            </div>
+
+            <!-- SLIDE -->
+
+            <div class="slide-canvas">
+
+                <div class="guide-x"></div>
+
+                <div class="guide-y"></div>
+
+                <div class="sample-element">
+
+                    Título do Slide
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</body>
+
+</html>
