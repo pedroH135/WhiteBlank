@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>WhiteBlank</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='index.css') }}">
+
+</head>
+
+<body>
+
+    <!-- TOPO -->
+
+    <header class="topbar">
+
+        <h1 class="logo">
+            WhiteBlank
+        </h1>
+
+    </header>
+
+    <!-- CONTEÚDO -->
+
+    <main class="dashboard">
+
+        <!-- PERFIL USUÁRIO -->
+
+        <section class="profile-panel">
+
+            <div class="profile-image">
+
+                <img src="{{ url_for('static', filename='default_user.png') }}"
+                     alt="Foto Perfil">
+
+            </div>
+
+            <div class="profile-info">
+
+                <h2>Pedro Henrique</h2>
+
+                <p>pedro@email.com</p>
+
+            </div>
+
+            <div class="profile-actions">
+
+                <button>
+                    Alterar Foto
+                </button>
+
+                <button>
+                    Alterar Senha
+                </button>
+
+                <button>
+                    Editar Perfil
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- ÁREA DE PROJETOS -->
+
+        <section class="projects-section">
+
+            <!-- TOPO PROJETOS -->
+
+            <div class="projects-header">
+
+                <h2>Meus Projetos</h2>
+
+                <form action="/novo_projeto"
+                    method="POST">
+
+                    <input
+                        type="text"
+                        name="nome"
+                        placeholder="Nome do projeto"
+                        required>
+
+                    <button
+                        type="submit"
+                        class="new-project-btn">
+
+                        + Novo Projeto
+
+                    </button>
+
+                </form>
+
+            </div>
+
+            <!-- CARTAS -->
+
+            <div class="projects-stack">
+
+                {% for projeto in projetos %}
+
+                <a href="/projeto/{{ projeto['id'] }}"
+                class="project-link">
+
+                    <div class="project-card">
+
+                        <h3>
+                            {{ projeto['nome'] }}
+                        </h3>
+
+                        <p>
+                            Projeto #{{ projeto['id'] }}
+                        </p>
+
+                    </div>
+
+                </a>
+
+                {% endfor %}
+
+            </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</body>
+
+</html>
