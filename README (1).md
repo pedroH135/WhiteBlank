@@ -362,3 +362,155 @@ Tela cheia, navegação entre slides e transição simples.
 | 3.8 Arquivo (Texto/Imagem) | `elementos.py` | `Texto`, `Imagem` |
 | 3.9 Salvamento | `modelos.py` | Objetos mantidos em memória na sessão |
 | 3.10 Biblioteca de usuários | `usuario.py` | `biblioteca`, `publicar_na_biblioteca()` |
+
+# Padrões de Projeto Utilizados
+
+## Factory Method (Criacional)
+
+O padrão Factory Method é utilizado para centralizar e padronizar a criação dos elementos gráficos do sistema. Em vez de instanciar diretamente objetos como `Texto` e `Imagem`, a aplicação utiliza fábricas responsáveis por criar cada tipo de elemento.
+
+Essa abordagem reduz o acoplamento entre a interface do usuário e as classes concretas dos elementos gráficos, permitindo que novos tipos de elementos sejam adicionados futuramente sem grandes alterações na estrutura do sistema.
+
+### Aplicação no WhiteBlank
+
+Quando o usuário adiciona um elemento ao slide, o sistema delega sua criação para uma fábrica específica:
+
+```text
+Usuário clica em "Adicionar Texto"
+            ↓
+      FabricaTexto
+            ↓
+      Cria objeto Texto
+            ↓
+     Adiciona ao Slide
+```
+
+```text
+Usuário clica em "Adicionar Imagem"
+            ↓
+      FabricaImagem
+            ↓
+     Cria objeto Imagem
+            ↓
+     Adiciona ao Slide
+```
+
+### Benefícios
+
+- Centralização da lógica de criação dos objetos.
+- Redução do acoplamento entre interface e classes concretas.
+- Facilidade para adicionar novos tipos de elementos.
+- Melhor organização e manutenção do código.
+
+---
+
+## Composite (Estrutural)
+
+O padrão Composite é utilizado para permitir que elementos gráficos individuais e grupos de elementos sejam tratados de forma uniforme.
+
+No WhiteBlank, todos os elementos do editor herdam da classe abstrata `ElementoGrafico`, possibilitando que um grupo de elementos seja manipulado da mesma forma que um elemento único.
+
+### Aplicação no WhiteBlank
+
+O usuário poderá selecionar vários elementos e agrupá-los em uma única estrutura lógica.
+
+```text
+ElementoGrafico
+│
+├── Texto
+├── Imagem
+└── GrupoElementos
+```
+
+Após agrupados, os elementos podem ser manipulados conjuntamente:
+
+```text
+[Título]
+[Imagem]
+[Legenda]
+
+        ↓
+
+GrupoElementos
+```
+
+Operações como mover, redimensionar e rotacionar passam a afetar todos os elementos pertencentes ao grupo.
+
+### Benefícios
+
+- Tratamento uniforme para elementos individuais e grupos.
+- Facilidade para implementar agrupamento e desagrupamento.
+- Simplificação das operações de edição em múltiplos elementos.
+- Maior flexibilidade para futuras expansões do editor.
+
+---
+
+## Command (Comportamental)
+
+O padrão Command é utilizado para encapsular as ações realizadas pelo usuário em objetos independentes.
+
+Cada operação do editor é representada por um comando específico, responsável por executar e, quando necessário, desfazer determinada ação.
+
+### Aplicação no WhiteBlank
+
+Diversas ações do editor podem ser modeladas como comandos:
+
+- Adicionar texto
+- Adicionar imagem
+- Mover elemento
+- Rotacionar elemento
+- Remover elemento
+- Criar slide
+- Remover slide
+
+Exemplo:
+
+```text
+Usuário move um elemento
+          ↓
+   MoverElementoCommand
+          ↓
+      Executar()
+```
+
+### Funcionalidades suportadas
+
+A principal vantagem desse padrão é possibilitar a implementação dos recursos de:
+
+```text
+Desfazer (Undo)
+Refazer (Redo)
+```
+
+Cada comando mantém as informações necessárias para executar e reverter uma ação.
+
+### Benefícios
+
+- Implementação facilitada de Undo/Redo.
+- Melhor organização das ações do sistema.
+- Redução do acoplamento entre interface e regras de negócio.
+- Maior facilidade para manutenção e expansão do editor.
+
+---
+
+# Integração dos Padrões
+
+Os padrões adotados trabalham de forma integrada dentro do WhiteBlank.
+
+O Factory Method é responsável pela criação dos elementos gráficos. Após criados, esses elementos podem ser organizados individualmente ou em grupos utilizando o Composite. Todas as operações realizadas sobre esses elementos são encapsuladas por comandos através do padrão Command.
+
+```text
+Factory Method
+       ↓
+Criação de elementos gráficos
+
+Composite
+       ↓
+Organização de elementos individuais e grupos
+
+Command
+       ↓
+Execução e controle das ações do editor
+```
+
+Essa combinação proporciona uma arquitetura modular, extensível e adequada para um editor de apresentações moderno, permitindo a evolução do sistema de forma organizada e sustentável.
