@@ -2,136 +2,174 @@
 <html lang="pt-br">
 
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>WhiteBlank</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='index.css') }}">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhiteBlank - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
 </head>
 
 <body>
 
-    <!-- TOPO -->
-
     <header class="topbar">
-
-        <h1 class="logo">
-            WhiteBlank
-        </h1>
-
+        <h1 class="logo">WhiteBlank</h1>
     </header>
-
-    <!-- CONTEÚDO -->
 
     <main class="dashboard">
 
-        <!-- PERFIL USUÁRIO -->
-
         <section class="profile-panel">
-
             <div class="profile-image">
-
-                <img src="{{ url_for('static', filename='default_user.png') }}"
-                     alt="Foto Perfil">
-
+                <img id="fotoPerfil" src="{{ foto_perfil }}" alt="Foto Perfil">
             </div>
-
             <div class="profile-info">
-
                 <h2>Pedro Henrique</h2>
-
                 <p>pedro@email.com</p>
-
             </div>
-
             <div class="profile-actions">
-
-                <button>
-                    Alterar Foto
-                </button>
-
-                <button>
-                    Alterar Senha
-                </button>
-
-                <button>
-                    Editar Perfil
-                </button>
-
+                <input type="file" id="inputFoto" style="display: none;" accept="image/*">
+                
+                <button id="btnAlterarFoto">Alterar Foto</button>
+                <button id="btnAlterarSenha">Alterar Senha</button>
+                <button>Editar Perfil</button>
             </div>
-
         </section>
 
-        <!-- ÁREA DE PROJETOS -->
-
-        <section class="projects-section">
-
-            <!-- TOPO PROJETOS -->
-
+                <section class="projects-section">
             <div class="projects-header">
-
                 <h2>Meus Projetos</h2>
-
-                <form action="/novo_projeto"
-                    method="POST">
-
-                    <input
-                        type="text"
-                        name="nome"
-                        placeholder="Nome do projeto"
-                        required>
-
-                    <button
-                        type="submit"
-                        class="new-project-btn">
-
-                        + Novo Projeto
-
-                    </button>
-
+                
+                <form action="/novo_projeto" method="POST" class="new-project-form" style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+                    <div style="display: flex; gap: 15px; align-items: center; width: 100%;">
+                        <input type="text" name="nome" placeholder="Nome do projeto" class="project-input" required>
+                        <div class="project-type-toggle">
+                            <input type="radio" id="type_individual" name="tipo_projeto" value="individual" checked hidden>
+                            <label for="type_individual" title="Projeto Individual">👤</label>
+                            <input type="radio" id="type_grupo" name="tipo_projeto" value="grupo" hidden>
+                            <label for="type_grupo" title="Projeto Compartilhado">👥</label>
+                        </div>
+                        <button type="submit" class="new-project-btn">+ Novo Projeto</button>
+                    </div>
+                    <input type="text" name="descricao" placeholder="Descrição do projeto (opcional)" class="project-input" style="width: 100%; font-size: 14px; padding: 10px 15px;">
                 </form>
-
             </div>
-
-            <!-- CARTAS -->
 
             <div class="projects-stack">
-
                 {% for projeto in projetos %}
-
-                <a href="/projeto/{{ projeto['id'] }}"
-                class="project-link">
-
+                <a href="/projeto/{{ projeto['id'] }}" class="project-link" style="text-decoration: none;">
                     <div class="project-card">
-
-                        <h3>
-                            {{ projeto['nome'] }}
-                        </h3>
-
-                        <p>
-                            Projeto #{{ projeto['id'] }}
+                        <h3>{{ projeto['nome'] }}</h3>
+                        
+                        <p style="font-weight: bold; color: #ddd;">
+                            {% if projeto['tipo'] == 'grupo' %}
+                                👥 Projeto em Grupo
+                            {% else %}
+                                👤 Projeto Individual
+                            {% endif %}
                         </p>
-
+                        
+                        {% if projeto['descricao'] %}
+                            <p style="font-size: 14px; color: #888; margin-top: 8px;">{{ projeto['descricao'] }}</p>
+                        {% endif %}
                     </div>
-
                 </a>
-
                 {% endfor %}
-
             </div>
-
-            </div>
-
         </section>
 
     </main>
 
-</body>
+    <div id="modalSenha" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModalSenha">&times;</span>
+            <h2>Alterar Senha</h2>
+            <p style="color: #aaa; font-size: 14px;">Introduza a sua nova senha abaixo.</p>
+            <input type="password" id="inputNovaSenha" placeholder="Nova senha">
+            <button id="btnSalvarSenha" class="new-project-btn" style="width: 100%; margin-top: 10px;">Salvar Senha</button>
+        </div>
+    </div>
 
+<script>
+    // -----------------------------------------
+    // LÓGICA DE ALTERAR FOTO
+    // -----------------------------------------
+    const btnAlterarFoto = document.getElementById('btnAlterarFoto');
+    const inputFoto = document.getElementById('inputFoto');
+    const fotoPerfil = document.getElementById('fotoPerfil');
+
+    btnAlterarFoto.addEventListener('click', () => {
+        inputFoto.click();
+    });
+
+    inputFoto.addEventListener('change', async (e) => {
+        if(e.target.files.length === 0) return;
+        
+        const formData = new FormData();
+        formData.append("foto", e.target.files[0]);
+
+        btnAlterarFoto.innerText = "A enviar..."; // Feedback visual
+
+        const response = await fetch('/alterar_foto', { method: 'POST', body: formData });
+        const dados = await response.json();
+
+        if(dados.status === 'ok') {
+            fotoPerfil.src = dados.caminho; // Atualiza a imagem na hora!
+        } else {
+            alert("Erro ao alterar foto.");
+        }
+        
+        btnAlterarFoto.innerText = "Alterar Foto";
+        inputFoto.value = ""; // Limpa o input
+    });
+
+    // -----------------------------------------
+    // LÓGICA DE ALTERAR SENHA (MODAL)
+    // -----------------------------------------
+    const btnAlterarSenha = document.getElementById('btnAlterarSenha');
+    const modalSenha = document.getElementById('modalSenha');
+    const closeModalSenha = document.getElementById('closeModalSenha');
+    const btnSalvarSenha = document.getElementById('btnSalvarSenha');
+    const inputNovaSenha = document.getElementById('inputNovaSenha');
+
+    // Abre o modal
+    btnAlterarSenha.addEventListener('click', () => {
+        modalSenha.style.display = "flex";
+    });
+
+    // Fecha o modal
+    closeModalSenha.addEventListener('click', () => {
+        modalSenha.style.display = "none";
+        inputNovaSenha.value = "";
+    });
+
+    // Submeter a nova senha
+    btnSalvarSenha.addEventListener('click', async () => {
+        const novaSenha = inputNovaSenha.value;
+        
+        if(novaSenha.trim() === "") {
+            alert("Por favor, introduza uma senha válida.");
+            return;
+        }
+
+        btnSalvarSenha.innerText = "A guardar...";
+
+        const response = await fetch('/alterar_senha', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nova_senha: novaSenha })
+        });
+        
+        const dados = await response.json();
+
+        if(dados.status === 'ok') {
+            alert("Senha alterada com sucesso!");
+            modalSenha.style.display = "none";
+            inputNovaSenha.value = "";
+        } else {
+            alert("Erro ao alterar a senha.");
+        }
+        
+        btnSalvarSenha.innerText = "Salvar Senha";
+    });
+</script>
+
+</body>
 </html>

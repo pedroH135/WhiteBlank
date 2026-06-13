@@ -1,110 +1,307 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Projeto - WhiteBlank</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='projeto.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='projeto.css') }}">
 </head>
-
 <body>
 
-    <!-- TOPO -->
-
     <header class="topbar">
-
-        <div class="logo-area">
-
+        <div class="logo-area" style="display: flex; align-items: center; gap: 20px;">
+            <button type="button" id="btnVoltar" style="background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">← Voltar</button>
             <h1>WhiteBlank</h1>
-
         </div>
-
         <div class="project-info">
-
             <h2>Projeto Álgebra Linear</h2>
-
-            <p>Salvamento automático ativo</p>
-
+            <p id="statusSalvo" style="font-weight: bold; color: #27ae60; transition: 0.3s;">Salvo na nuvem ✔</p>
         </div>
-
     </header>
 
-    <!-- CONTEÚDO -->
-
     <main class="workspace">
-
-        <!-- PAINEL DE SLIDES -->
-
-        <aside class="slides-panel">
-
-            <button class="new-slide-btn">
-                + Novo Slide
-            </button>
-
-            <div class="slide-card active">
-                Slide 1
-            </div>
-
-            <div class="slide-card">
-                Slide 2
-            </div>
-
-            <div class="slide-card">
-                Slide 3
-            </div>
-
+        <aside class="slides-panel" id="containerSlidesLateral">
+            <button class="new-slide-btn" id="btnNovoSlide">+ Novo Slide</button>
         </aside>
 
-        <!-- ÁREA CENTRAL -->
-
         <section class="editor-container">
-
-            <!-- BARRA DE FERRAMENTAS -->
-
             <div class="toolbar">
-
-                <button>Texto</button>
-
-                <button>Imagem</button>
-
-                <button>Duplicar</button>
-
-                <button>Excluir</button>
-
-                <button>Template</button>
-
-                <button>Apresentar</button>
-
+                <button type="button" id="btnTexto">Texto</button>
+                <input type="file" id="inputImagem" style="display: none;" accept="image/*">
+                <button type="button" id="btnImagem">Imagem</button>
+                <button type="button">Duplicar</button>
+                <button type="button" id="btnDesfazer">Desfazer</button>
+                <button type="button" id="btnRefazer">Refazer</button>
             </div>
-
-            <!-- SLIDE -->
 
             <div class="slide-canvas">
-
-                <div class="guide-x"></div>
-
-                <div class="guide-y"></div>
-
-                <div class="sample-element">
-
-                    Título do Slide
-
+                <div class="slide" id="slideCanvas">
+                    <div class="guide-x"></div>
+                    <div class="guide-y"></div>
                 </div>
-
             </div>
-
         </section>
-
     </main>
 
-</body>
+<script>
+const slideCanvas = document.getElementById("slideCanvas");
+const btnTexto = document.getElementById("btnTexto");
+const btnImagem = document.getElementById("btnImagem");
+const inputImagem = document.getElementById("inputImagem");
+const btnDesfazer = document.getElementById("btnDesfazer");
+const btnRefazer = document.getElementById("btnRefazer");
+const btnVoltar = document.getElementById("btnVoltar");
+const btnNovoSlide = document.getElementById("btnNovoSlide");
+const containerSlidesLateral = document.getElementById("containerSlidesLateral");
+const statusSalvo = document.getElementById("statusSalvo");
 
+// ---- SISTEMA DE FEEDBACK DO SALVAMENTO AUTOMÁTICO ----
+function mostrarSalvando() {
+    statusSalvo.innerText = "Salvando as alterações...";
+    statusSalvo.style.color = "#f39c12"; // Cor laranja
+}
+function mostrarSalvo() {
+    statusSalvo.innerText = "Salvo na nuvem ✔";
+    statusSalvo.style.color = "#27ae60"; // Cor verde
+}
+
+btnVoltar.addEventListener("click", () => { window.location.href = "/index"; });
+
+// ---- RENDERIZAR OS SLIDES NA LATERAL ----
+async function atualizarListaDeSlidesLateral() {
+    const response = await fetch("/listar_slides");
+    const dados = await response.json();
+    
+    // Remove os cartões antigos sem apagar o botão "+ Novo Slide"
+    containerSlidesLateral.querySelectorAll(".slide-card").forEach(c => c.remove());
+    
+    dados.slides.forEach(ordem => {
+        const card = document.createElement("div");
+        card.classList.add("slide-card");
+        if (ordem === dados.ativo) card.classList.add("active");
+        
+        // Define o card como 'relative' para o botão ficar ancorado no canto dele
+        card.style.position = "relative";
+        
+        // Texto do slide
+        const textoSlide = document.createElement("span");
+        textoSlide.innerText = `Slide ${ordem}`;
+        card.appendChild(textoSlide);
+        
+        // Botão de Excluir o Slide (agora no final da caixinha)
+        const btnExcluir = document.createElement("button");
+        btnExcluir.innerText = "🗑️"; // Ícone de lixeira
+        btnExcluir.style.position = "absolute";
+        btnExcluir.style.bottom = "8px";  // Fixa na parte de baixo
+        btnExcluir.style.right = "8px";   // Fixa no canto direito
+        btnExcluir.style.background = "transparent";
+        btnExcluir.style.border = "none";
+        btnExcluir.style.cursor = "pointer";
+        btnExcluir.style.fontSize = "14px";
+        btnExcluir.style.opacity = "0.7"; // Deixa um pouco transparente
+        btnExcluir.title = "Excluir Slide";
+        
+        // Efeito visual ao passar o mouse na lixeira
+        btnExcluir.addEventListener("mouseenter", () => btnExcluir.style.opacity = "1");
+        btnExcluir.addEventListener("mouseleave", () => btnExcluir.style.opacity = "0.7");
+        
+        btnExcluir.addEventListener("click", async (e) => {
+            e.stopPropagation(); // Evita clicar no slide acidentalmente
+            if (dados.slides.length <= 1) {
+                alert("O projeto deve ter no mínimo 1 slide.");
+                return;
+            }
+            if (confirm(`Tem certeza que deseja apagar o Slide ${ordem}?`)) {
+                mostrarSalvando();
+                const res = await fetch("/excluir_slide", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ordem: ordem })
+                });
+                const dadosExclusao = await res.json();
+                if (dadosExclusao.status === "ok") {
+                    await atualizarListaDeSlidesLateral();
+                    
+                    // Atualiza a tela branca central para o slide que assumiu o lugar
+                    const resSel = await fetch("/selecionar_slide", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ordem: dadosExclusao.ativo })
+                    });
+                    const dadosSlide = await resSel.json();
+                    atualizarInterfaceSlide(dadosSlide.elementos);
+                    mostrarSalvo();
+                }
+            }
+        });
+        
+        card.appendChild(btnExcluir);
+        
+        // Clicar no card carrega o slide
+        card.addEventListener("click", async () => {
+            const res = await fetch("/selecionar_slide", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ordem: ordem })
+            });
+            const dadosSlide = await res.json();
+            if (dadosSlide.status === "ok") {
+                atualizarInterfaceSlide(dadosSlide.elementos);
+                containerSlidesLateral.querySelectorAll(".slide-card").forEach(c => c.classList.remove("active"));
+                card.classList.add("active");
+            }
+        });
+        containerSlidesLateral.appendChild(card);
+    });
+}
+
+
+btnNovoSlide.addEventListener("click", async () => {
+    mostrarSalvando();
+    const response = await fetch("/adicionar_slide", { method: "POST" });
+    const dados = await response.json();
+    if (dados.status === "ok") {
+        await atualizarListaDeSlidesLateral();
+        atualizarInterfaceSlide([]);
+        mostrarSalvo();
+    }
+});
+
+function atualizarInterfaceSlide(elementos) {
+    slideCanvas.querySelectorAll(".texto-elemento, .imagem-elemento").forEach(el => el.remove());
+
+    elementos.forEach(el => {
+        if (el.tipo === "texto") {
+            const novoTexto = document.createElement("div");
+            novoTexto.classList.add("texto-elemento");
+            novoTexto.contentEditable = true;
+            novoTexto.innerText = el.conteudo;
+            
+            novoTexto.style.position = "absolute";
+            novoTexto.style.width = el.largura + "px";
+            novoTexto.style.height = el.altura + "px";
+            novoTexto.style.left = el.x + "px";
+            novoTexto.style.top = el.y + "px";
+
+            novoTexto.addEventListener("blur", async () => {
+                mostrarSalvando();
+                await fetch("/atualizar_elemento", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: el.id, conteudo: novoTexto.innerText })
+                });
+                mostrarSalvo();
+            });
+
+            slideCanvas.appendChild(novoTexto);
+            associarArrasto(novoTexto, el.id);
+            
+        } else if (el.tipo === "imagem") {
+            const novaImg = document.createElement("img");
+            novaImg.classList.add("imagem-elemento");
+            novaImg.src = el.conteudo; 
+            novaImg.draggable = false;
+            
+            novaImg.style.position = "absolute";
+            novaImg.style.width = el.largura + "px";
+            novaImg.style.height = el.altura + "px";
+            novaImg.style.left = el.x + "px";
+            novaImg.style.top = el.y + "px";
+            
+            slideCanvas.appendChild(novaImg);
+            associarArrasto(novaImg, el.id);
+        }
+    });
+}
+
+btnTexto.addEventListener("click", async () => {
+    mostrarSalvando();
+    const response = await fetch("/criar_texto", { method: "POST" });
+    const dados = await response.json();
+    if (dados.status === "ok") atualizarInterfaceSlide(dados.elementos);
+    mostrarSalvo();
+});
+
+btnImagem.addEventListener("click", () => { inputImagem.click(); });
+inputImagem.addEventListener("change", async (e) => {
+    if (e.target.files.length === 0) return;
+    mostrarSalvando();
+    const formData = new FormData();
+    formData.append("imagem", e.target.files[0]);
+
+    const response = await fetch("/criar_imagem", { method: "POST", body: formData });
+    const dados = await response.json();
+    if (dados.status === "ok") {
+        atualizarInterfaceSlide(dados.elementos);
+        inputImagem.value = ""; 
+    }
+    mostrarSalvo();
+});
+
+btnDesfazer.addEventListener("click", async () => {
+    mostrarSalvando();
+    const response = await fetch("/desfazer", { method: "POST" });
+    const dados = await response.json();
+    if (dados.status === "ok") atualizarInterfaceSlide(dados.elementos);
+    mostrarSalvo();
+});
+btnRefazer.addEventListener("click", async () => {
+    mostrarSalvando();
+    const response = await fetch("/refazer", { method: "POST" });
+    const dados = await response.json();
+    if (dados.status === "ok") atualizarInterfaceSlide(dados.elementos);
+    mostrarSalvo();
+});
+
+
+// ---- NOVO SISTEMA CORRIGIDO DE ARRASTO GLOBAL ----
+let elementoArrastado = null;
+let idArrastado = null;
+let offsetX = 0;
+let offsetY = 0;
+
+document.addEventListener("mousemove", (e) => {
+    if (!elementoArrastado) return;
+    const rect = slideCanvas.getBoundingClientRect();
+    elementoArrastado.style.left = (e.clientX - rect.left - offsetX) + "px";
+    elementoArrastado.style.top = (e.clientY - rect.top - offsetY) + "px";
+});
+
+document.addEventListener("mouseup", async () => {
+    if (!elementoArrastado) return;
+    
+    const el = elementoArrastado;
+    const id = idArrastado;
+    
+    // Solta o elemento
+    elementoArrastado = null;
+    idArrastado = null;
+
+    // Dispara o salvamento no banco assim que terminar de arrastar na tela branca!
+    mostrarSalvando();
+    await fetch("/atualizar_elemento", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            id: id,
+            x: parseInt(el.style.left) || 0,
+            y: parseInt(el.style.top) || 0
+        })
+    });
+    mostrarSalvo();
+});
+
+function associarArrasto(elemento, idBackend) {
+    elemento.addEventListener("mousedown", (e) => {
+        if (elemento.contentEditable === "true" && document.activeElement === elemento) return;
+        elementoArrastado = elemento;
+        idArrastado = idBackend;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+    });
+}
+
+atualizarListaDeSlidesLateral();
+</script>
+</body>
 </html>
