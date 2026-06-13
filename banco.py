@@ -33,16 +33,15 @@ def criar_tabelas():
     #Projetos
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS projetos(
-
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-
         nome TEXT NOT NULL,
-
+        descricao TEXT,                 -- Nova coluna de descrição
+        tipo TEXT DEFAULT 'individual', -- Nova coluna para individual/grupo
         dono_id INTEGER,
-
         FOREIGN KEY(dono_id) REFERENCES usuarios(id)
     )
     """)
+
 
     #Slides
     cursor.execute("""
@@ -59,29 +58,18 @@ def criar_tabelas():
     """)
 
     #elementos
+    # Em banco.py, certifique-se de que a tabela de elementos possui os campos necessários:
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS elementos (
-
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-
         slide_id INTEGER,
-
-        tipo TEXT,
-
-        conteudo TEXT,
-
-        x INTEGER,
-
-        y INTEGER,
-
-        largura INTEGER,
-
-        altura INTEGER,
-
-        rotacao INTEGER DEFAULT 0,
-
-        FOREIGN KEY(slide_id)
-        REFERENCES slides(id)
+        tipo TEXT NOT NULL,         -- 'texto' ou 'imagem'
+        conteudo TEXT,              -- Texto digitado ou o caminho da imagem
+        largura INTEGER DEFAULT 200,
+        altura INTEGER DEFAULT 50,
+        pos_x INTEGER DEFAULT 100,  -- Adicionado para salvamento de posição
+        pos_y INTEGER DEFAULT 100,  -- Adicionado para salvamento de posição
+        FOREIGN KEY(slide_id) REFERENCES slides(id)
     )
     """)
     conn.commit()

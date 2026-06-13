@@ -1,5 +1,12 @@
-from elementos import ElementoGrafico, Texto, Imagem
+from elementos import (
+    ElementoGrafico,
+    Texto,
+    Imagem,
+    GrupoElementos
+)
+from factory import ElementoFactory
 from banco import conectar
+from command import HistoricoComandos
 
 
 class Template:
@@ -18,42 +25,163 @@ class Template:
 
 
 class Slide:
-    def __init__(self, ordem: int):
-        self.ordem     = ordem
-        self.elementos: list[ElementoGrafico] = []
 
-    def adicionar_elemento(self, el: ElementoGrafico):
+    def __init__(self, ordem):
+
+        self.ordem = ordem
+
+        self.elementos = []
+
+        self.historico = HistoricoComandos()
+
+    def adicionar_elemento(self, el):
+
         self.elementos.append(el)
-        label = el.conteudo[:25] if isinstance(el, Texto) else el.nome
-        print(f"  + {'Texto' if isinstance(el, Texto) else 'Imagem'} '{label}' adicionado ao Slide {self.ordem}")
 
-    def remover_elemento(self, idx: int):
+        print(
+            f"  + {el.info()} "
+            f"adicionado ao Slide {self.ordem}"
+        )
+
+    def criar_texto(self, conteudo, fonte="Arial", tamanho=16, cor="preto", x=100, y=100):
+        texto = ElementoFactory.criar_elemento(
+            "texto", conteudo=conteudo, fonte=fonte, tamanho=tamanho, cor=cor, x=x, y=y
+        )
+        from command import AdicionarElementoCommand
+        cmd = AdicionarElementoCommand(self, texto)
+        self.historico.executar(cmd)
+        return texto
+    
+    def criar_imagem(self, nome, largura=200, altura=150, x=150, y=150):
+        imagem = ElementoFactory.criar_elemento(
+            "imagem", nome=nome, largura=largura, altura=altura, x=x, y=y
+        )
+        from command import AdicionarElementoCommand
+        cmd = AdicionarElementoCommand(self, imagem)
+        self.historico.executar(cmd)
+        return imagem
+
+    def desfazer(self):
+        self.historico.desfazer()
+
+    def refazer(self):
+        self.historico.refazer()
+    
+    def desagrupar_elemento(self, indice: int):
+        if not (0 <= indice < len(self.elementos)):
+            print("  x Índice inválido.")
+            return
+
+        elemento = self.elementos[indice]
+
+        if not isinstance(elemento, GrupoElementos):
+            print("  x O elemento selecionado não é um grupo.")
+            return
+
+        # Remove o grupo da posição atual
+        self.elementos.pop(indice)
+
+        # Reinsere os filhos na mesma posição, mantendo ordem
+        for i, filho in enumerate(elemento.elementos):
+            self.elementos.insert(indice + i, filho)
+
+        print(f"  + {len(elemento.elementos)} elemento(s) desagrupados.")
+
+
+    def remover_elemento(self, idx):
+
         if 0 <= idx < len(self.elementos):
-            print(f"  - Removido: {self.elementos.pop(idx).info()}")
+
+            from command import RemoverElementoCommand
+
+            elemento = self.elementos[idx]
+
+            cmd = RemoverElementoCommand(
+                self,
+                elemento
+            )
+
+            self.historico.executar(cmd)
+
         else:
-            print("  x Indice invalido.")
+
+            print("Indice invalido")
+
+
+    def agrupar_elementos(self, indices):
+
+        grupo = GrupoElementos()
+
+        elementos = []
+
+        for i in sorted(indices, reverse=True):
+
+            elementos.append(
+                self.elementos.pop(i)
+            )
+
+        for elemento in reversed(elementos):
+
+            grupo.adicionar(elemento)
+
+        self.elementos.append(grupo)
+
+        print(
+            f"  + Grupo criado com "
+            f"{len(grupo.elementos)} elemento(s)"
+        )
+
+        return grupo
 
     def salvar_como_template(self, nome: str, criador) -> Template:
-        dados = []
-        for el in self.elementos:
+
+        def serializar_elemento(el):
             if isinstance(el, Texto):
-                dados.append({"tipo": "texto", "conteudo": el.conteudo, "fonte": el.fonte,
-                               "tamanho": el.tamanho, "cor": el.cor,
-                               "largura": el.largura, "altura": el.altura})
-            else:
-                dados.append({"tipo": "imagem", "nome": el.nome,
-                               "largura": el.largura, "altura": el.altura})
+                return {
+                    "tipo": "texto",
+                    "conteudo": el.conteudo,
+                    "fonte": el.fonte,
+                    "tamanho": el.tamanho,
+                    "cor": el.cor,
+                    "largura": el.largura,
+                    "altura": el.altura,
+                }
+            elif isinstance(el, Imagem):
+                return {
+                    "tipo": "imagem",
+                    "nome": el.nome,
+                    "largura": el.largura,
+                    "altura": el.altura,
+                }
+            elif isinstance(el, GrupoElementos):
+                return {
+                    "tipo": "grupo",
+                    "elementos": [serializar_elemento(filho) for filho in el.elementos],
+                }
+
+        dados = [serializar_elemento(el) for el in self.elementos]
         t = Template(nome, dados, criador)
         print(f"  + Template '{nome}' criado com {len(dados)} elem.")
         return t
 
     def aplicar_template(self, t: Template):
+
+        from command import AdicionarElementoCommand
+
         for d in t.elementos:
-            el = (Texto(d["conteudo"], d.get("fonte", "Arial"), d.get("tamanho", 16),
-                        d.get("cor", "preto"), d.get("largura", 200), d.get("altura", 50))
-                  if d["tipo"] == "texto"
-                  else Imagem(d["nome"], d.get("largura", 200), d.get("altura", 150)))
-            self.adicionar_elemento(el)
+
+            el = ElementoFactory.criar_elemento(
+                d["tipo"],
+                **d
+            )
+
+            cmd = AdicionarElementoCommand(
+                self,
+                el
+            )
+
+            self.historico.executar(cmd)
+
         print(f"  + Template '{t.nome}' aplicado.")
 
     def renderizar(self):
@@ -66,6 +194,12 @@ class Slide:
         for i, el in enumerate(self.elementos):
             print(f"\n  [{i}] {el.info()}")
             print(el.renderizar())
+
+    def desfazer(self):
+        self.historico.desfazer()
+
+    def refazer(self):
+        self.historico.refazer()
 
 
 class Projeto:
