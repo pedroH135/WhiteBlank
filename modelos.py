@@ -44,22 +44,27 @@ class Slide:
         )
 
     def criar_texto(self, conteudo, fonte="Arial", tamanho=16, cor="preto", x=100, y=100):
+        # USA A FÁBRICA DE ELEMENTOS (FACTORY PATTERN)
         texto = ElementoFactory.criar_elemento(
             "texto", conteudo=conteudo, fonte=fonte, tamanho=tamanho, cor=cor, x=x, y=y
         )
+        self.adicionar_elemento(texto)
+        
+        # COMUNICA COM O HISTÓRICO (COMMAND PATTERN)
         from command import AdicionarElementoCommand
         cmd = AdicionarElementoCommand(self, texto)
         self.historico.executar(cmd)
-        return texto
-    
-    def criar_imagem(self, nome, largura=200, altura=150, x=150, y=150):
-        imagem = ElementoFactory.criar_elemento(
-            "imagem", nome=nome, largura=largura, altura=altura, x=x, y=y
-        )
+
+    def criar_imagem(self, nome, x=150, y=150):
+        # USA A FÁBRICA DE ELEMENTOS (FACTORY PATTERN)
+        img = ElementoFactory.criar_elemento("imagem", nome=nome, x=x, y=y)
+        self.adicionar_elemento(img)
+        
+        # COMUNICA COM O HISTÓRICO (COMMAND PATTERN)
         from command import AdicionarElementoCommand
-        cmd = AdicionarElementoCommand(self, imagem)
+        cmd = AdicionarElementoCommand(self, img)
         self.historico.executar(cmd)
-        return imagem
+
 
     def desfazer(self):
         self.historico.desfazer()

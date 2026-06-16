@@ -91,21 +91,8 @@ def salvar_slide_no_banco(slide):
         conn.close()
 
 def obter_elementos_json(slide):
-    lista_elementos = []
-    for idx, el in enumerate(slide.elementos):
-        if isinstance(el, Texto):
-            lista_elementos.append({
-                "id": idx, "tipo": "texto", "conteudo": el.conteudo,
-                "largura": el.largura, "altura": el.altura,
-                "x": el.x, "y": el.y  # Enviando como x e y para o JavaScript
-            })
-        elif isinstance(el, Imagem):
-            lista_elementos.append({
-                "id": idx, "tipo": "imagem", "conteudo": el.nome,
-                "largura": el.largura, "altura": el.altura,
-                "x": el.x, "y": el.y
-            })
-    return lista_elementos
+    # Graças ao Polimorfismo dos nossos Modelos, delegamos a função de virar JSON para a própria classe
+    return [el.to_dict(idx) for idx, el in enumerate(slide.elementos)]
 
 # ------------------------
 # ROTAS DE AUTENTICAÇÃO E INDEX
@@ -375,6 +362,5 @@ def novo_projeto():
     
     return redirect('/index')
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True)

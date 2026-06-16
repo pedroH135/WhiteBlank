@@ -4,16 +4,28 @@ class ElementoGrafico(ABC):
     def __init__(self, largura: int, altura: int, x: int = 100, y: int = 100):
         self.largura = largura
         self.altura  = altura
-        self.x       = x  # Alinhado com o banco.py
-        self.y       = y  # Alinhado com o banco.py
+        self._x = x
+        self._y = y
+
+    # Getter e Setter para interceptar os movimentos!
+    @property
+    def x(self): return self._x
+    @x.setter
+    def x(self, val): self._x = val
+
+    @property
+    def y(self): return self._y
+    @y.setter
+    def y(self, val): self._y = val
 
     @abstractmethod
-    def alterar_proporcoes(self, nova_largura: int, nova_altura: int):
-        pass
+    def alterar_proporcoes(self, nova_largura: int, nova_altura: int): pass
 
     @abstractmethod
-    def renderizar(self) -> str:
-        pass
+    def renderizar(self) -> str: pass
+
+    @abstractmethod
+    def to_dict(self, idx: int) -> dict: pass
 
     def info(self):
         return (
@@ -22,10 +34,8 @@ class ElementoGrafico(ABC):
         )
 
 class Texto(ElementoGrafico):
-    def __init__(self, conteudo: str, fonte: str = "Arial",
-                 tamanho: int = 16, cor: str = "preto",
-                 largura: int = 200, altura: int = 50,
-                 x: int = 100, y: int = 100):
+    def __init__(self, conteudo: str, fonte: str = "Arial", tamanho: int = 16, 
+                 cor: str = "preto", largura: int = 200, altura: int = 50, x: int = 100, y: int = 100):
         super().__init__(largura, altura, x, y)
         self.conteudo = conteudo
         self.fonte    = fonte
@@ -33,19 +43,19 @@ class Texto(ElementoGrafico):
         self.cor      = cor
 
     def alterar_proporcoes(self, nova_largura: int, nova_altura: int):
-        escala = nova_altura / self.altura if self.altura else 1
-        self.tamanho = max(8, int(self.tamanho * scala))
         self.largura, self.altura = nova_largura, nova_altura
 
     def renderizar(self) -> str:
-        b = "-" * (len(self.conteudo) + 4)
-        return (f"  +{b}+\n"
-                f"  |  {self.conteudo}  |  [{self.fonte}, {self.tamanho}pt, {self.cor}]\n"
-                f"  +{b}+")
+        return f"[{self.conteudo}]"
+        
+    def to_dict(self, idx: int) -> dict:
+        return {
+            "id": idx, "tipo": "texto", "conteudo": self.conteudo,
+            "largura": self.largura, "altura": self.altura, "x": self.x, "y": self.y
+        }
 
 class Imagem(ElementoGrafico):
-    def __init__(self, nome: str, largura: int = 200, altura: int = 150,
-                 x: int = 150, y: int = 150):
+    def __init__(self, nome: str, largura: int = 200, altura: int = 150, x: int = 150, y: int = 150):
         super().__init__(largura, altura, x, y)
         self.nome      = nome
         self.proporcao = largura / altura if altura else 1
@@ -54,58 +64,52 @@ class Imagem(ElementoGrafico):
         self.largura, self.altura = nova_largura, nova_altura
 
     def renderizar(self) -> str:
-        w = max(20, min(self.largura // 10, 36))
-        return (f"  +{'='*w}+\n"
-                f"  | {'[IMG] ' + self.nome:^{w-1}}|\n"
-                f"  | {f'{self.largura}x{self.altura}px':^{w-1}}|\n"
-                f"  +{'='*w}+")
+        return f"[IMG] {self.nome}"
+        
+    def to_dict(self, idx: int) -> dict:
+        return {
+            "id": idx, "tipo": "imagem", "conteudo": self.nome,
+            "largura": self.largura, "altura": self.altura, "x": self.x, "y": self.y
+        }
     
 
 class GrupoElementos(ElementoGrafico):
-
     def __init__(self):
-
-        super().__init__(0, 0)
-
+        super().__init__(0, 0, x=0, y=0)
         self.elementos = []
 
     def adicionar(self, elemento):
-
         self.elementos.append(elemento)
 
     def remover(self, elemento):
-
         if elemento in self.elementos:
-
             self.elementos.remove(elemento)
 
-    def alterar_proporcoes(
-        self,
-        nova_largura,
-        nova_altura
-    ):
+    @property
+    def x(self): return self._x
+    @x.setter
+    def x(self, novo_x):
+        delta = novo_x - self._x
+        self._x = novo_x
+        # Se eu movo o grupo para a direita, todos os filhos andam para a direita juntos!
+        for el in self.elementos: el.x += delta  
 
-        for elemento in self.elementos:
+    @property
+    def y(self): return self._y
+    @y.setter
+    def y(self, novo_y):
+        delta = novo_y - self._y
+        self._y = novo_y
+        for el in self.elementos: el.y += delta  
 
-            elemento.alterar_proporcoes(
-                nova_largura,
-                nova_altura
-            )
+    def alterar_proporcoes(self, nova_largura, nova_altura): pass
 
     def renderizar(self):
-
-        resultado = "GRUPO:\n"
-
-        for elemento in self.elementos:
-
-            resultado += elemento.renderizar()
-            resultado += "\n"
-
-        return resultado
-    
-    def info(self):
-
-        return (
-            f"[Grupo] "
-            f"{len(self.elementos)} elemento(s)"
-        )
+        return "\n".join([el.renderizar() for el in self.elementos])
+        
+    def to_dict(self, idx: int) -> dict:
+        return {
+            "id": idx, "tipo": "grupo",
+            "elementos": [el.to_dict(i) for i, el in enumerate(self.elementos)],
+            "x": self.x, "y": self.y
+        }
