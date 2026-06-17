@@ -2,13 +2,15 @@ import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, jsonify
 from werkzeug.utils import secure_filename
+from flask import session, redirect, url_for
 
 from banco import criar_tabelas, conectar
 from usuario import Usuario
 from modelos import Slide
 from elementos import Texto, Imagem
 
-app = Flask(__name__)
+app = Flask(__name__)  # <--- ESTA LINHA PRECISA ESTAR AQUI
+app.secret_key = 'sua_chave_secreta'
 
 # Configuração para Upload de Imagens do Computador
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -103,10 +105,15 @@ def home():
     if request.method == 'POST':
         usuario = Usuario.login(request.form['email'], request.form['senha'])
         if usuario:
+            # SALVA A SESSÃO AQUI (usando a notação de dicionário que corrigimos)
+            session['usuario_id'] = usuario['id'] 
             return redirect('/index')
         else:
             return "Email ou senha incorretos"
+            
+    # Se for GET (apenas entrar no site)
     return render_template('login.html')
+
 
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
@@ -116,30 +123,36 @@ def cadastro():
         return redirect('/')
     return render_template('cadastro.html')
 
+from flask import session # Adicione no topo
+
 @app.route('/index')
 def index():
+    # 1. VERIFICAÇÃO DE SEGURANÇA
+    if 'usuario_id' not in session:
+        return redirect(url_for('home')) # <--- MUDE AQUI PARA 'home'
+
+    usuario_id = session['usuario_id']
+
     conn = conectar()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    # 1. Busca os projetos
-    cursor.execute("SELECT * FROM projetos")
+    # 2. BUSCA APENAS OS PROJETOS DO USUÁRIO LOGADO
+    # Usamos o WHERE dono_id = ? para filtrar!
+    cursor.execute("SELECT * FROM projetos WHERE dono_id = ?", (usuario_id,))
     projetos = cursor.fetchall()
     
-    # 2. Busca os dados do usuário (estamos usando o ID 1 para o protótipo)
-    cursor.execute("SELECT foto_perfil FROM usuarios WHERE id = 1")
+    # 3. BUSCA APENAS OS DADOS DESTE USUÁRIO
+    cursor.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,))
     usuario = cursor.fetchone()
     conn.close()
     
-    # 3. Verifica se tem foto salva, senão usa a padrão
-    from flask import url_for
+    # 4. LÓGICA DE FOTO
     caminho_foto = url_for('static', filename='default_user.png')
-    
     if usuario and usuario['foto_perfil']:
         caminho_foto = usuario['foto_perfil']
         
-    # 4. Envia a variável 'foto_perfil' para o HTML
-    return render_template('index.html', projetos=projetos, foto_perfil=caminho_foto)
+    return render_template('index.html', projetos=projetos, foto_perfil=caminho_foto, usuario=usuario)
 
 @app.route('/projeto/<int:id_projeto>')
 def abrir_projeto(id_projeto):
@@ -253,7 +266,10 @@ def atualizar_elemento():
 
 @app.route('/alterar_foto', methods=['POST'])
 def alterar_foto():
-    usuario_id = 1 # Utilizador fixo para o nosso protótipo
+    if 'usuario_id' not in session:
+        return jsonify({"status": "erro"}), 401
+        
+    usuario_id = session['usuario_id'] # <--- ID DINÂMICO
     arquivo = request.files.get('foto')
     
     if arquivo and arquivo.filename != '':
@@ -263,7 +279,6 @@ def alterar_foto():
         
         caminho_web = f"/static/uploads/{nome_seguro}"
         
-        # Atualiza a foto na base de dados
         conn = conectar()
         cursor = conn.cursor()
         cursor.execute("UPDATE usuarios SET foto_perfil = ? WHERE id = ?", (caminho_web, usuario_id))
@@ -275,12 +290,14 @@ def alterar_foto():
 
 @app.route('/alterar_senha', methods=['POST'])
 def alterar_senha():
-    usuario_id = 1 # Utilizador fixo para o nosso protótipo
+    if 'usuario_id' not in session:
+        return jsonify({"status": "erro"}), 401
+        
+    usuario_id = session['usuario_id'] # <--- ID DINÂMICO
     dados = request.get_json()
     nova_senha = dados.get('nova_senha')
     
     if nova_senha:
-        # Atualiza a senha na base de dados
         conn = conectar()
         cursor = conn.cursor()
         cursor.execute("UPDATE usuarios SET senha = ? WHERE id = ?", (nova_senha, usuario_id))
@@ -289,6 +306,7 @@ def alterar_senha():
         return jsonify({"status": "ok"})
         
     return jsonify({"status": "erro"}), 400
+
 
 @app.route('/desfazer', methods=['POST'])
 def desfazer():
@@ -346,10 +364,14 @@ def excluir_slide():
 
 @app.route('/novo_projeto', methods=['POST'])
 def novo_projeto():
+    if 'usuario_id' not in session:
+        return redirect(url_for('home'))
+
     nome = request.form['nome']
     descricao = request.form.get('descricao', '')
-    tipo = request.form.get('tipo_projeto', 'individual') # 'individual' ou 'grupo'
-    dono_id = 1
+    tipo = request.form.get('tipo_projeto', 'individual')
+    
+    dono_id = session['usuario_id'] # <--- PEGA O ID DE QUEM ESTÁ LOGADO
     
     conn = conectar()
     cursor = conn.cursor()
