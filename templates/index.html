@@ -21,8 +21,7 @@
                 <img id="fotoPerfil" src="{{ foto_perfil }}" alt="Foto Perfil">
             </div>
             <div class="profile-info">
-                <h2>Pedro Henrique</h2>
-                <p>pedro@email.com</p>
+                <h2>{{ usuario['email'].split('@')[0] }}</h2> <p>{{ usuario['email'] }}</p>
             </div>
             <div class="profile-actions">
                 <input type="file" id="inputFoto" style="display: none;" accept="image/*">
